@@ -1,0 +1,226 @@
+/* ── web-chat client ── */
+
+const socket = io();
+
+// ── DOM refs ──
+const loginScreen   = document.getElementById("login-screen");
+const chatScreen    = document.getElementById("chat-screen");
+const usernameInput = document.getElementById("username-input");
+const joinBtn       = document.getElementById("join-btn");
+const loginError    = document.getElementById("login-error");
+const myUsername    = document.getElementById("my-username");
+const roomList      = document.getElementById("room-list");
+const currentRoomEl = document.getElementById("current-room-name");
+const userCountEl   = document.getElementById("user-count");
+const messagesEl    = document.getElementById("messages");
+const typingEl      = document.getElementById("typing-indicator");
+const msgInput      = document.getElementById("msg-input");
+const sendBtn       = document.getElementById("send-btn");
+const logoutBtn     = document.getElementById("logout-btn");
+
+// ── State ──
+let myName      = "";
+let currentRoom = null;
+let typingTimer = null;
+let isTyping    = false;
+let typingUsers = new Set();
+
+// ── Helpers ──
+function formatTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function showError(msg) {
+  loginError.textContent = msg;
+  usernameInput.classList.add("shake");
+  usernameInput.addEventListener("animationend", () => usernameInput.classList.remove("shake"), { once: true });
+}
+
+function appendMessage({ username, text, timestamp, own = false, system = false }) {
+  const row = document.createElement("div");
+  row.className = "msg" + (system ? " system" : own ? " own" : "");
+
+  if (system) {
+    const t = document.createElement("span");
+    t.className = "msg-text";
+    t.textContent = text;
+    row.appendChild(t);
+  } else {
+    const time = document.createElement("span");
+    time.className = "msg-time";
+    time.textContent = formatTime(timestamp);
+
+    const user = document.createElement("span");
+    user.className = "msg-user";
+    user.textContent = username;
+    user.title = username;
+
+    const body = document.createElement("span");
+    body.className = "msg-text";
+    body.textContent = text;
+
+    row.append(time, user, body);
+  }
+
+  messagesEl.appendChild(row);
+  scrollToBottom();
+}
+
+function renderRoomList(rooms) {
+  roomList.innerHTML = "";
+  rooms.forEach((room) => {
+    const li = document.createElement("li");
+    if (room.id === currentRoom) li.classList.add("active");
+
+    li.innerHTML = `
+      <span class="room-hash">#</span>${room.name.toLowerCase()}
+      <span class="room-count">${room.count}</span>
+    `;
+    li.title = `#${room.name}`;
+    li.addEventListener("click", () => joinRoom(room.id));
+    roomList.appendChild(li);
+  });
+}
+
+function updateTypingIndicator() {
+  if (typingUsers.size === 0) {
+    typingEl.textContent = "";
+    return;
+  }
+  const names = [...typingUsers];
+  if (names.length === 1) {
+    typingEl.textContent = `${names[0]} is typing…`;
+  } else if (names.length === 2) {
+    typingEl.textContent = `${names[0]} and ${names[1]} are typing…`;
+  } else {
+    typingEl.textContent = `several people are typing…`;
+  }
+}
+
+// ── Actions ──
+function joinRoom(roomId) {
+  if (roomId === currentRoom) return;
+  messagesEl.innerHTML = "";
+  typingUsers.clear();
+  updateTypingIndicator();
+
+  socket.emit("join_room", roomId, (res) => {
+    if (res?.error) return;
+    currentRoom = roomId;
+    currentRoomEl.textContent = roomId;
+  });
+}
+
+function sendMessage() {
+  const text = msgInput.value.trim();
+  if (!text || !currentRoom) return;
+  socket.emit("send_message", text);
+  msgInput.value = "";
+  stopTyping();
+}
+
+function startTyping() {
+  if (!isTyping) {
+    isTyping = true;
+    socket.emit("typing", true);
+  }
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(stopTyping, 2000);
+}
+
+function stopTyping() {
+  if (isTyping) {
+    isTyping = false;
+    socket.emit("typing", false);
+  }
+  clearTimeout(typingTimer);
+}
+
+// ── Login flow ──
+function attemptJoin() {
+  loginError.textContent = "";
+  const name = usernameInput.value.trim();
+  if (!name) return showError("Enter a username.");
+  if (name.length < 2) return showError("Too short (min 2 chars).");
+
+  socket.emit("set_username", name, (res) => {
+    if (res.error) return showError(res.error);
+
+    myName = name;
+    myUsername.textContent = name;
+
+    // Switch screens
+    loginScreen.classList.remove("active");
+    chatScreen.classList.add("active");
+
+    // Get rooms and join general
+    socket.emit("get_rooms", (rooms) => {
+      renderRoomList(rooms);
+      joinRoom("general");
+      msgInput.focus();
+    });
+  });
+}
+
+joinBtn.addEventListener("click", attemptJoin);
+usernameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") attemptJoin();
+});
+
+// ── Message input ──
+sendBtn.addEventListener("click", sendMessage);
+msgInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+msgInput.addEventListener("input", () => {
+  if (msgInput.value.trim()) startTyping();
+  else stopTyping();
+});
+
+// ── Logout ──
+logoutBtn.addEventListener("click", () => {
+  location.reload();
+});
+
+// ── Socket events ──
+socket.on("chat_message", (data) => {
+  const own = data.username === myName;
+  appendMessage({ ...data, own });
+});
+
+socket.on("system_message", (data) => {
+  appendMessage({ text: data.text, timestamp: data.timestamp, system: true });
+});
+
+socket.on("user_count", (count) => {
+  userCountEl.textContent = count;
+});
+
+socket.on("room_list", (rooms) => {
+  renderRoomList(rooms);
+});
+
+socket.on("user_typing", ({ username, isTyping }) => {
+  if (username === myName) return;
+  if (isTyping) typingUsers.add(username);
+  else typingUsers.delete(username);
+  updateTypingIndicator();
+});
+
+socket.on("disconnect", () => {
+  appendMessage({ text: "Connection lost. Reconnecting…", system: true });
+});
+
+socket.on("connect", () => {
+  if (currentRoom && myName) {
+    appendMessage({ text: "Reconnected.", system: true });
+  }
+});

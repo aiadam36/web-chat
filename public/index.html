@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>web-chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- USERNAME SCREEN -->
+  <div id="login-screen" class="screen active">
+    <div class="login-box">
+      <div class="logo">
+        <span class="logo-bracket">[</span>
+        web-chat
+        <span class="logo-bracket">]</span>
+      </div>
+      <p class="tagline">real-time. no frills. just talk.</p>
+      <div class="input-group">
+        <input
+          id="username-input"
+          type="text"
+          placeholder="pick a username"
+          maxlength="20"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="join-btn">join →</button>
+      </div>
+      <p id="login-error" class="error-text"></p>
+    </div>
+  </div>
+
+  <!-- CHAT SCREEN -->
+  <div id="chat-screen" class="screen">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo-sm"><span class="logo-bracket">[</span>wc<span class="logo-bracket">]</span></span>
+        <span id="my-username" class="my-username"></span>
+      </div>
+
+      <div class="sidebar-section-label">ROOMS</div>
+      <ul id="room-list" class="room-list"></ul>
+
+      <div class="sidebar-footer">
+        <button id="logout-btn">← leave</button>
+      </div>
+    </aside>
+
+    <main class="chat-main">
+      <header class="chat-header">
+        <div>
+          <span class="channel-hash">#</span>
+          <span id="current-room-name">general</span>
+        </div>
+        <div class="user-count-wrap">
+          <span class="dot"></span>
+          <span id="user-count">1</span> online
+        </div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <div id="typing-indicator" class="typing-indicator"></div>
+
+      <footer class="chat-footer">
+        <input
+          id="msg-input"
+          type="text"
+          placeholder="say something..."
+          maxlength="500"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="send-btn">send</button>
+      </footer>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
