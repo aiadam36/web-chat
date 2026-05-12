@@ -16,7 +16,11 @@ const messagesEl    = document.getElementById("messages");
 const typingEl      = document.getElementById("typing-indicator");
 const msgInput      = document.getElementById("msg-input");
 const sendBtn       = document.getElementById("send-btn");
-const logoutBtn     = document.getElementById("logout-btn");
+const logoutBtn        = document.getElementById("logout-btn");
+const sidebarEl        = document.getElementById("sidebar");
+const sidebarOverlay   = document.getElementById("sidebar-overlay");
+const sidebarToggleBtn = document.getElementById("sidebar-toggle");
+const sidebarCloseBtn  = document.getElementById("sidebar-close");
 
 // ── State ──
 let myName      = "";
@@ -82,7 +86,7 @@ function renderRoomList(rooms) {
       <span class="room-count">${room.count}</span>
     `;
     li.title = `#${room.name}`;
-    li.addEventListener("click", () => joinRoom(room.id));
+    li.addEventListener("click", () => { joinRoom(room.id); closeSidebar(); });
     roomList.appendChild(li);
   });
 }
@@ -186,6 +190,16 @@ msgInput.addEventListener("input", () => {
 });
 
 // ── Logout ──
+// ── Mobile sidebar toggle ──
+function openSidebar()  { sidebarEl.classList.add("open"); sidebarOverlay.classList.add("open"); }
+function closeSidebar() { sidebarEl.classList.remove("open"); sidebarOverlay.classList.remove("open"); }
+
+sidebarToggleBtn.addEventListener("click", () => {
+  sidebarEl.classList.contains("open") ? closeSidebar() : openSidebar();
+});
+sidebarCloseBtn.addEventListener("click", closeSidebar);
+sidebarOverlay.addEventListener("click", closeSidebar);
+
 logoutBtn.addEventListener("click", () => {
   location.reload();
 });
