@@ -29,6 +29,21 @@ let typingTimer = null;
 let isTyping    = false;
 let typingUsers = new Set();
 
+// ── Username persistence ──
+const STORAGE_KEY = "webchat_username";
+
+function saveCachedUsername(name) {
+  try { localStorage.setItem(STORAGE_KEY, name); } catch {}
+}
+
+function loadCachedUsername() {
+  try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
+}
+
+function clearCachedUsername() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
 // ── Helpers ──
 function formatTime(ts) {
   const d = new Date(ts);
@@ -153,10 +168,18 @@ function attemptJoin() {
   if (name.length < 2) return showError("Too short (min 2 chars).");
 
   socket.emit("set_username", name, (res) => {
-    if (res.error) return showError(res.error);
+    if (res.error) {
+      // If cached name is taken (e.g. another tab), clear the cache
+      // so the user can pick a new one without confusion
+      if (loadCachedUsername().toLowerCase() === name.toLowerCase()) {
+        clearCachedUsername();
+      }
+      return showError(res.error);
+    }
 
     myName = name;
     myUsername.textContent = name;
+    saveCachedUsername(name);  // ← persist
 
     loginScreen.classList.remove("active");
     chatScreen.classList.add("active");
@@ -167,6 +190,18 @@ function attemptJoin() {
       msgInput.focus();
     });
   });
+}
+
+// Pre-fill username input if we have a cached name
+const cached = loadCachedUsername();
+if (cached) {
+  usernameInput.value = cached;
+  joinBtn.textContent = `join as ${cached} →`;
+  usernameInput.addEventListener("input", () => {
+    joinBtn.textContent = usernameInput.value.trim() === cached
+      ? `join as ${cached} →`
+      : "join →";
+  }, { once: false });
 }
 
 joinBtn.addEventListener("click", attemptJoin);
@@ -197,7 +232,10 @@ sidebarToggleBtn.addEventListener("click", () => {
 sidebarCloseBtn.addEventListener("click", closeSidebar);
 sidebarOverlay.addEventListener("click", closeSidebar);
 
-logoutBtn.addEventListener("click", () => { location.reload(); });
+logoutBtn.addEventListener("click", () => {
+  clearCachedUsername();
+  location.reload();
+});
 
 // ── Socket events ──
 
