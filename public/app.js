@@ -45,9 +45,9 @@ function showError(msg) {
   usernameInput.addEventListener("animationend", () => usernameInput.classList.remove("shake"), { once: true });
 }
 
-function appendMessage({ username, text, timestamp, own = false, system = false }) {
+function appendMessage({ username, text, timestamp, own = false, system = false, historic = false }) {
   const row = document.createElement("div");
-  row.className = "msg" + (system ? " system" : own ? " own" : "");
+  row.className = "msg" + (system ? " system" : own ? " own" : "") + (historic ? " historic" : "");
 
   if (system) {
     const t = document.createElement("span");
@@ -158,11 +158,9 @@ function attemptJoin() {
     myName = name;
     myUsername.textContent = name;
 
-    // Switch screens
     loginScreen.classList.remove("active");
     chatScreen.classList.add("active");
 
-    // Get rooms and join general
     socket.emit("get_rooms", (rooms) => {
       renderRoomList(rooms);
       joinRoom("general");
@@ -189,7 +187,6 @@ msgInput.addEventListener("input", () => {
   else stopTyping();
 });
 
-// ── Logout ──
 // ── Mobile sidebar toggle ──
 function openSidebar()  { sidebarEl.classList.add("open"); sidebarOverlay.classList.add("open"); }
 function closeSidebar() { sidebarEl.classList.remove("open"); sidebarOverlay.classList.remove("open"); }
@@ -200,11 +197,21 @@ sidebarToggleBtn.addEventListener("click", () => {
 sidebarCloseBtn.addEventListener("click", closeSidebar);
 sidebarOverlay.addEventListener("click", closeSidebar);
 
-logoutBtn.addEventListener("click", () => {
-  location.reload();
-});
+logoutBtn.addEventListener("click", () => { location.reload(); });
 
 // ── Socket events ──
+
+// History replay when joining a room
+socket.on("room_history", (messages) => {
+  if (!messages.length) return;
+  appendMessage({ text: `— last ${messages.length} messages —`, system: true });
+  messages.forEach((msg) => {
+    const own = msg.username === myName;
+    appendMessage({ ...msg, own, historic: true });
+  });
+  appendMessage({ text: "— now —", system: true });
+});
+
 socket.on("chat_message", (data) => {
   const own = data.username === myName;
   appendMessage({ ...data, own });
