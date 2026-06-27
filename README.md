@@ -9,6 +9,7 @@ Real-time multi-user chat app built with Node.js, Express, and Socket.io.
 - Join/leave notifications
 - Username uniqueness enforcement
 - Clean terminal-aesthetic UI
+- Chat history persistency
 
 ## Setup
 
