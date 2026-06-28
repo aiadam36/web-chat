@@ -18,22 +18,32 @@ npm install
 npm start
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Take a look at `config.json` too!
 
-For development with auto-reload:
-```bash
-npm run dev
-```
-
-## Adding More Rooms
-
-In `server.js`, add an entry to the `rooms` object:
+This is default value:
 
 ```js
-const rooms = {
-  general: { name: "General", users: new Map() },
-  random:  { name: "Random",  users: new Map() },
-  tech:    { name: "Tech",    users: new Map() },
-  gaming:  { name: "Gaming",  users: new Map() }, // ← add like this
-};
+{
+  "port": 3000,
+  "defaultRoom": "general",
+  "rooms": [
+    { "id": "general", "name": "General" },
+    { "id": "random",  "name": "Random"  },
+    { "id": "tech",    "name": "Tech"    }
+  ],
+  "history": {
+    "maxStored": 1000,
+    "maxSentOnJoin": 50
+  },
+  "limits": {
+    "maxMessageLength": 500,
+    "maxUsernameLength": 20,
+    "minUsernameLength": 2
+  },
+  "typingTimeoutMs": 2000
+}
 ```
+
+## Contributing
+
+Feel free to fork and open PR

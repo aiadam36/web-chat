@@ -1,5 +1,17 @@
 /* ── web-chat client ── */
 
+// ── Boot: fetch server config, then initialise ──
+let cfg = {
+  defaultRoom:     "general",
+  typingTimeoutMs: 2000,
+  limits: { maxMessageLength: 500, maxUsernameLength: 20, minUsernameLength: 2 },
+};
+
+fetch("/config")
+  .then((r) => r.json())
+  .then((data) => { cfg = data; })
+  .catch(() => { /* use defaults above if fetch fails */ });
+
 const socket = io();
 
 // ── DOM refs ──
@@ -149,7 +161,7 @@ function startTyping() {
     socket.emit("typing", true);
   }
   clearTimeout(typingTimer);
-  typingTimer = setTimeout(stopTyping, 2000);
+  typingTimer = setTimeout(stopTyping, cfg.typingTimeoutMs);
 }
 
 function stopTyping() {
@@ -164,13 +176,13 @@ function stopTyping() {
 function attemptJoin() {
   loginError.textContent = "";
   const name = usernameInput.value.trim();
+  const { minUsernameLength, maxUsernameLength } = cfg.limits;
   if (!name) return showError("Enter a username.");
-  if (name.length < 2) return showError("Too short (min 2 chars).");
+  if (name.length < minUsernameLength) return showError(`Too short (min ${minUsernameLength} chars).`);
+  if (name.length > maxUsernameLength) return showError(`Too long (max ${maxUsernameLength} chars).`);
 
   socket.emit("set_username", name, (res) => {
     if (res.error) {
-      // If cached name is taken (e.g. another tab), clear the cache
-      // so the user can pick a new one without confusion
       if (loadCachedUsername().toLowerCase() === name.toLowerCase()) {
         clearCachedUsername();
       }
@@ -179,14 +191,14 @@ function attemptJoin() {
 
     myName = name;
     myUsername.textContent = name;
-    saveCachedUsername(name);  // ← persist
+    saveCachedUsername(name);
 
     loginScreen.classList.remove("active");
     chatScreen.classList.add("active");
 
     socket.emit("get_rooms", (rooms) => {
       renderRoomList(rooms);
-      joinRoom("general");
+      joinRoom(cfg.defaultRoom);
       msgInput.focus();
     });
   });

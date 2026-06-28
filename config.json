@@ -1,0 +1,19 @@
+{
+  "port": 3000,
+  "defaultRoom": "general",
+  "rooms": [
+    { "id": "general", "name": "General" },
+    { "id": "random",  "name": "Random"  },
+    { "id": "tech",    "name": "Tech"    }
+  ],
+  "history": {
+    "maxStored": 1000,
+    "maxSentOnJoin": 50
+  },
+  "limits": {
+    "maxMessageLength": 500,
+    "maxUsernameLength": 20,
+    "minUsernameLength": 2
+  },
+  "typingTimeoutMs": 2000
+}

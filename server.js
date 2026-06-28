@@ -4,14 +4,21 @@ const { Server } = require("socket.io");
 const path = require("path");
 const fs = require("fs");
 
+// ── Config ──
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8"));
+
+const PORT         = process.env.PORT || config.port;
+const DATA_DIR     = path.join(__dirname, "data");
+const MAX_HISTORY  = config.history.maxStored;
+const HISTORY_SEND = config.history.maxSentOnJoin;
+const MAX_MSG_LEN  = config.limits.maxMessageLength;
+const MAX_USR_LEN  = config.limits.maxUsernameLength;
+const MIN_USR_LEN  = config.limits.minUsernameLength;
+const DEFAULT_ROOM = config.defaultRoom;
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
-const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, "data");
-const MAX_HISTORY = 1000; // max messages kept per room file
-const HISTORY_SEND = 50;  // messages sent to a joining user
 
 // ── Ensure data/ directory exists ──
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
@@ -19,12 +26,26 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 // ── Serve static files ──
 app.use(express.static(path.join(__dirname, "public")));
 
-// ── Room definitions ──
-const rooms = {
-  general: { name: "General", users: new Map() },
-  random:  { name: "Random",  users: new Map() },
-  tech:    { name: "Tech",    users: new Map() },
-};
+// ── Expose config to the client ──
+// The client fetches /config to get the values it needs (defaultRoom, limits, typingTimeoutMs, etc.)
+app.get("/config", (_req, res) => {
+  res.json({
+    defaultRoom:    config.defaultRoom,
+    typingTimeoutMs: config.typingTimeoutMs,
+    limits:         config.limits,
+  });
+});
+
+// ── Build rooms from config ──
+const rooms = {};
+for (const { id, name } of config.rooms) {
+  rooms[id] = { name, users: new Map() };
+}
+
+// Validate defaultRoom exists
+if (!rooms[DEFAULT_ROOM]) {
+  console.warn(`[warn] defaultRoom "${DEFAULT_ROOM}" not found in rooms list. Falling back to first room.`);
+}
 
 // ── JSON persistence helpers ──
 
@@ -47,18 +68,10 @@ function saveMessage(roomId, message) {
   const file = historyPath(roomId);
   let history = loadHistory(roomId);
   history.push(message);
-
-  // Trim to MAX_HISTORY (keep the newest messages)
   if (history.length > MAX_HISTORY) {
     history = history.slice(history.length - MAX_HISTORY);
   }
-
   fs.writeFileSync(file, JSON.stringify(history, null, 2), "utf8");
-}
-
-// ── Seed history files for any new rooms that don't have one yet ──
-for (const roomId of Object.keys(rooms)) {
-  loadHistory(roomId); // touch-check; file is created lazily on first message
 }
 
 // ── Room helpers ──
@@ -83,8 +96,10 @@ io.on("connection", (socket) => {
 
   // Set username
   socket.on("set_username", (name, callback) => {
-    const trimmed = name.trim().slice(0, 20);
-    if (!trimmed) return callback({ error: "Username cannot be empty." });
+    const trimmed = name.trim().slice(0, MAX_USR_LEN);
+    if (!trimmed || trimmed.length < MIN_USR_LEN) {
+      return callback({ error: `Username must be ${MIN_USR_LEN}–${MAX_USR_LEN} characters.` });
+    }
 
     for (const room of Object.values(rooms)) {
       for (const [, u] of room.users) {
@@ -98,12 +113,11 @@ io.on("connection", (socket) => {
     callback({ ok: true });
   });
 
-  // Join a room — sends last HISTORY_SEND messages to the joining socket
+  // Join a room
   socket.on("join_room", (roomId, callback) => {
     if (!username) return callback?.({ error: "Set a username first." });
     if (!rooms[roomId]) return callback?.({ error: "Room not found." });
 
-    // Leave current room
     if (currentRoom) {
       socket.leave(currentRoom);
       rooms[currentRoom].users.delete(socket.id);
@@ -114,12 +128,10 @@ io.on("connection", (socket) => {
       io.to(currentRoom).emit("user_count", rooms[currentRoom].users.size);
     }
 
-    // Join new room
     currentRoom = roomId;
     socket.join(currentRoom);
     rooms[currentRoom].users.set(socket.id, username);
 
-    // Send history to the joining socket only
     const history = loadHistory(roomId).slice(-HISTORY_SEND);
     socket.emit("room_history", history);
 
@@ -133,10 +145,10 @@ io.on("connection", (socket) => {
     callback?.({ ok: true });
   });
 
-  // Send message — broadcast + persist
+  // Send message
   socket.on("send_message", (text) => {
     if (!username || !currentRoom) return;
-    const trimmed = text.trim().slice(0, 500);
+    const trimmed = text.trim().slice(0, MAX_MSG_LEN);
     if (!trimmed) return;
 
     const message = {
@@ -176,6 +188,8 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n🚀 web-chat running at http://localhost:${PORT}\n`);
+  console.log(`\n🚀 web-chat running at http://localhost:${PORT}`);
+  console.log(`   Rooms: ${config.rooms.map(r => "#" + r.id).join(", ")}`);
+  console.log(`   Default room: #${DEFAULT_ROOM}`);
   console.log(`   History stored in: ${DATA_DIR}\n`);
 });
