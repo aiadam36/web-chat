@@ -9,7 +9,12 @@ let cfg = {
 
 fetch("/config")
   .then((r) => r.json())
-  .then((data) => { cfg = data; })
+  .then((data) => {
+    cfg = data;
+    if (data.accentColor) {
+      document.documentElement.style.setProperty("--accent", data.accentColor);
+    }
+  })
   .catch(() => { /* use defaults above if fetch fails */ });
 
 const socket = io();

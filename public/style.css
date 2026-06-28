@@ -192,7 +192,7 @@ button:active { transform: scale(0.97); }
 .room-list li:hover { background: var(--border); color: var(--text); }
 
 .room-list li.active {
-  background: rgba(232, 255, 71, 0.1);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   color: var(--accent);
 }
 
@@ -207,7 +207,7 @@ button:active { transform: scale(0.97); }
 }
 
 .room-list li.active .room-count {
-  background: rgba(232, 255, 71, 0.2);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .sidebar-footer {
@@ -305,8 +305,8 @@ button:active { transform: scale(0.97); }
 
 .msg:hover { background: rgba(255,255,255,0.03); }
 
-.msg.own { background: rgba(232, 255, 71, 0.04); }
-.msg.own:hover { background: rgba(232, 255, 71, 0.07); }
+.msg.own { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.msg.own:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 
 .msg-time {
   font-family: var(--mono);

@@ -30,9 +30,10 @@ app.use(express.static(path.join(__dirname, "public")));
 // The client fetches /config to get the values it needs (defaultRoom, limits, typingTimeoutMs, etc.)
 app.get("/config", (_req, res) => {
   res.json({
-    defaultRoom:    config.defaultRoom,
+    defaultRoom:     config.defaultRoom,
+    accentColor:     config.accentColor,
     typingTimeoutMs: config.typingTimeoutMs,
-    limits:         config.limits,
+    limits:          config.limits,
   });
 });
 
