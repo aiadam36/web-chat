@@ -3,13 +3,14 @@
 Real-time multi-user chat app built with Node.js, Express, and Socket.io.
 
 ## Features
-- Multiple chat rooms (#general, #random, #tech)
+- Multiple chat rooms
 - Live online user count per room
 - Typing indicators
 - Join/leave notifications
 - Username uniqueness enforcement
-- Clean terminal-aesthetic UI
+- Clean aesthetic UI
 - Chat history persistency
+- Wide customization support
 
 ## Setup
 
@@ -25,6 +26,7 @@ This is default value:
 ```js
 {
   "port": 3000,
+  "accentColor": "#e8ff47",
   "defaultRoom": "general",
   "rooms": [
     { "id": "general", "name": "General" },
