@@ -14,14 +14,18 @@ Real-time multi-user chat app built with Node.js, Express, and Socket.io.
 
 ## Setup
 
+Clone this repo, `cd` and run this commands:
+
 ```bash
 npm install
 npm start
 ```
 
-Take a look at `config.json` too!
+For configuration, please rename `config.json.example` to `config.json`
 
-This is default value:
+**That's mandatory step else the app could breaks!**
+
+This is default value for cfg file:
 
 ```js
 {
